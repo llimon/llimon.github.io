@@ -1,0 +1,192 @@
+<!doctype html><html lang=en-us><head><meta charset=utf-8><title>K3s - Adding a private insecure registry - Soo broken</title><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel=stylesheet type=text/css><link rel=stylesheet href=https://llimon.github.io/css/normalize.css><link rel=stylesheet href=https://llimon.github.io/css/skeleton.css><link rel=stylesheet href=https://llimon.github.io/css/custom.css><link rel=stylesheet href=//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css><script src=https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js></script><script src=https://code.jquery.com/ui/1.12.1/jquery-ui.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js></script><link rel="shortcut icon" href=/images/favicon.png type=image/png></head><body><nav><label for=drop class=toggle><i class="fas fa-bars u-pull-right" aria-hidden=true></i><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></label>
+<input type=checkbox id=drop><ul class=menu><li><a href=https://llimon.github.io><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/contact class=Members><span><i class="fas fa-envelope"></i>contact</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/post class=Members><span><i class="fas fa-list"></i>blog</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/about class=Members><span><i class="fas fa-home"></i>about</span></a></li></ul></nav><div class=site><h2 style=margin-left:80px>Soo broken</h2></div><div class=container><h1 class=section-heading>K3s - Adding a private insecure registry</h1><i class="far fa-calendar"></i>Published On: 2020-06-25,
+<i class="far fa-clock"></i>Reading Time: 3 minutes</h6></div><div class="section main"><div class="row content"><br><article><h2 id=introduction>Introduction</h2><p>K3s is a minimalistic kubernetes platform created by <a href=rancher.com>Rancher</a>. It uses SQLite instead of etcd and provides a powerfull platform with builtin service Loadbalancer.</p><p>I have settled on using k3s for my home server, where I also do some development, I needed to run a local registry to test my artifacts and as part of Continuous Integration.</p><p><strong>Warning an insecure registry is not recommended in most cases. It exposes your registry to trivial man-in-the-middle (MITM) attacks. Only use this solution for isolated testing or in a tightly controlled, air-gapped environment.</strong></p><h2 id=creating-a-registry>Creating a registry.</h2><ol><li>Create deployment, we will use a non-persistent volume for now. configure it to listen on port <em>5000</em>, registry images
+will be stored in <em>/var/lib/registry-storage</em>. This will allow you to keep registry state after system restart.</li></ol><div class=highlight><div style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 1
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 2
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 3
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 4
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 5
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 6
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 7
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 8
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 9
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">10
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">11
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">12
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">13
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">14
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">15
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">16
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">17
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">18
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">19
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">20
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">21
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">22
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">23
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">24
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">25
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">26
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">27
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">28
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">29
+</span></span><span style="margin-right:.4em;padding:0 .4em;color:#495050">30
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">31
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">32
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">33
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">34
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">35
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">36
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">37
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">38
+</span></span><span style="margin-right:.4em;padding:0 .4em;color:#495050">39
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">40
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">41
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">42
+</span></span><span style="margin-right:.4em;padding:0 .4em;color:#495050">43
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: ReplicationController
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: kube-registry-v0
+  <span style=color:#719e07>namespace</span>: kube-system
+  <span style=color:#719e07>labels</span>:
+    <span style=color:#719e07>k8s-app</span>: kube-registry
+    <span style=color:#719e07>version</span>: v0
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>replicas</span>: <span style=color:#2aa198>1</span>
+  <span style=color:#719e07>selector</span>:
+    <span style=color:#719e07>k8s-app</span>: kube-registry
+    <span style=color:#719e07>version</span>: v0
+  <span style=color:#719e07>template</span>:
+    <span style=color:#719e07>metadata</span>:
+      <span style=color:#719e07>labels</span>:
+        <span style=color:#719e07>k8s-app</span>: kube-registry
+        <span style=color:#719e07>version</span>: v0
+    <span style=color:#719e07>spec</span>:
+      <span style=color:#719e07>containers</span>:
+      - <span style=color:#719e07>name</span>: registry
+        <span style=color:#719e07>image</span>: registry:<span style=color:#2aa198>2</span>
+        <span style=color:#719e07>resources</span>:
+          <span style=color:#719e07>limits</span>:
+            <span style=color:#719e07>cpu</span>: 100m
+            <span style=color:#719e07>memory</span>: 200Mi
+        <span style=color:#719e07>env</span>:
+<span style=display:block;width:100%;background-color:#19404a>        - <span style=color:#719e07>name</span>: REGISTRY_HTTP_ADDR
+</span><span style=display:block;width:100%;background-color:#19404a>          <span style=color:#719e07>value</span>: :<span style=color:#2aa198>5000</span>
+</span>        - <span style=color:#719e07>name</span>: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+          <span style=color:#719e07>value</span>: /var/lib/registry
+        <span style=color:#719e07>volumeMounts</span>:
+        - <span style=color:#719e07>name</span>: image-store
+          <span style=color:#719e07>mountPath</span>: /var/lib/registry
+        <span style=color:#719e07>ports</span>:
+<span style=display:block;width:100%;background-color:#19404a>        - <span style=color:#719e07>containerPort</span>: <span style=color:#2aa198>5000</span>
+</span><span style=display:block;width:100%;background-color:#19404a>          <span style=color:#719e07>name</span>: registry
+</span><span style=display:block;width:100%;background-color:#19404a>          <span style=color:#719e07>protocol</span>: TCP
+</span>      <span style=color:#719e07>volumes</span>:
+      - <span style=color:#719e07>name</span>: image-store
+<span style=display:block;width:100%;background-color:#19404a>        <span style=color:#719e07>hostPath</span>:
+</span><span style=display:block;width:100%;background-color:#19404a>          <span style=color:#719e07>path</span>: /var/lib/registry-storage
+</span>        <span style=color:#586e75>#emptyDir: {}</span>
+</code></pre></td></tr></table></div></div><p><br>2. Create a service to expose your registry, with a type: LoadBalancer. This will expose port 5000 on localhost</p><div class=highlight><div style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 1
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 2
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 3
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 4
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 5
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 6
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 7
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 8
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 9
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">10
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">11
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">12
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">13
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">14
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">15
+</span></span><span style="margin-right:.4em;padding:0 .4em;color:#495050">16
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">17
+</span></span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: Service
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: kube-registry
+  <span style=color:#719e07>namespace</span>: kube-system
+  <span style=color:#719e07>labels</span>:
+    <span style=color:#719e07>k8s-app</span>: kube-registry
+    <span style=color:#719e07>kubernetes.io/name</span>: <span style=color:#2aa198>&#34;KubeRegistry&#34;</span>
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>selector</span>:
+    <span style=color:#719e07>k8s-app</span>: kube-registry
+  <span style=color:#719e07>ports</span>:
+  - <span style=color:#719e07>name</span>: registry
+<span style=display:block;width:100%;background-color:#19404a>    <span style=color:#719e07>port</span>: <span style=color:#2aa198>5000</span>
+</span><span style=display:block;width:100%;background-color:#19404a>    <span style=color:#719e07>targetPort</span>: <span style=color:#2aa198>5000</span>
+</span>    <span style=color:#719e07>protocol</span>: TCP
+<span style=display:block;width:100%;background-color:#19404a>  <span style=color:#719e07>type</span>: LoadBalancer
+</span></code></pre></td></tr></table></div></div><p></p><h2 id=configure-k3s-to-use-your-new-registry>Configure k3s to use your new registry</h2><ol start=3><li>Create <strong>/etc/rancher/k3s/registries.yaml</strong> file on each k3s node, If you have more than one node
+Make sure to taint, pods to run only on node.</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>  <span style=color:#2aa198>&#34;&lt;your-host&gt;:5000&#34;</span>:
+    <span style=color:#719e07>endpoint</span>:
+      - <span style=color:#2aa198>&#34;http://&lt;your-host&gt;:5000&#34;</span>
+</code></pre></div><h2 id=configure-docker-client-to-access-an-insecure-registry>Configure docker client to access an insecure registry.</h2><ol start=4><li>Linux create file <strong>/etc/docker/daemon.json</strong>
+(for Mac and windows go Docker/Preferences/Docker Engine)</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json>{
+  <span style=color:#268bd2>&#34;insecure-registries&#34;</span> : [<span style=color:#2aa198>&#34;myregistrydomain.com:5000&#34;</span>]
+}
+</code></pre></div><p>Your are all set. time to fill in your registry with images.</p><h2 id=test-your-registry>Test your registry</h2><ol start=5><li>Pull test docker image</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ docker pull busybox
+Using default tag: latest
+latest: Pulling from library/busybox
+Digest: sha256:95cf004f559831017cdf4628aaf1bb30133677be8702a8c5f2994629f637a209
+Status: Image is up to date <span style=color:#719e07>for</span> busybox:latest
+docker.io/library/busybox:latest
+</code></pre></div><ol start=6><li>change the image tag</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>docker tag busybox:latest &lt;your-host&gt;:5000/test:latest
+</code></pre></div><ol start=7><li>push to your k3s registry</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ docker push core:5000/test:latest
+The push refers to repository <span style=color:#719e07>[</span>core:5000/test<span style=color:#719e07>]</span>
+1be74353c3d0: Pushed
+latest: digest: sha256:fd4a8673d0344c3a7f427fe4440d4b8dfd4fa59cfabbd9098f9eb0cb4ba905d0 size: <span style=color:#2aa198>527</span>
+</code></pre></div><ol start=8><li>Create a test kubernetes resource</li></ol><div class=highlight><div style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><table style=border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 1
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 2
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 3
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 4
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 5
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 6
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 7
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 8
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050"> 9
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">10
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">11
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">12
+</span><span style="margin-right:.4em;padding:0 .4em;color:#495050">13
+</span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">14
+</span></span><span style=display:block;width:100%;background-color:#19404a><span style="margin-right:.4em;padding:0 .4em;color:#495050">15
+</span></span><span style="margin-right:.4em;padding:0 .4em;color:#495050">16
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: Pod
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: test-registry-proxy
+  <span style=color:#719e07>namespace</span>: playground
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>containers</span>:
+  - <span style=color:#719e07>name</span>: busybox
+    <span style=color:#719e07>image</span>: busybox:latest
+    <span style=color:#719e07>command</span>: [<span style=color:#2aa198>&#34;sh&#34;</span>]
+    <span style=color:#719e07>args</span>: [<span style=color:#2aa198>&#34;-c&#34;</span>, <span style=color:#2aa198>&#34;while [ 1 ]; do echo &#39;Hello World&#39; &amp;&amp; sleep 10; done&#34;</span>]
+
+    <span style=color:#719e07>resources</span>:
+<span style=display:block;width:100%;background-color:#19404a>      <span style=color:#719e07>limits</span>:
+</span><span style=display:block;width:100%;background-color:#19404a>        <span style=color:#719e07>cpu</span>: 100m
+</span>        <span style=color:#719e07>memory</span>: 50Mi
+</code></pre></td></tr></table></div></div><ol start=9><li>Create a namespace</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl create namespace playground
+namespace/playground created
+</code></pre></div><ol start=10><li>Apply your test resource and see results</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash> $ kubectl apply -f test-registry.yaml
+pod/test-registry-proxy created
+</code></pre></div><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground get pods
+NAME                  READY   STATUS    RESTARTS   AGE
+test-registry-proxy   1/1     Running   <span style=color:#2aa198>0</span>          7s
+</code></pre></div><p><strong>Note</strong> Status running is a good sign, Kubernetes was hable to pull the image and run the container.
+11. Confirm is running by tailing the console</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash> $ kubectl -n playground logs -f test-registry-proxy
+Hello World
+Hello World
+Hello World
+Hello World
+^C
+</code></pre></div><h2 id=taking-it-further>Taking it further</h2><p>This pattern with some small changes can be used in large production systems a few things that should be improved</p><ul><li>Block registry access</li><li>Replace the LoadBalancer with an Nginx ingress or an AWS ALB or GCE.</li><li>Use NFS or cloud alternatives.</li><li>Add SSL</li><li>Authentication.</li></ul></article></div></div><footer><a href=https://github.com/llimon/llimon.github.io/content/post/k3s-registry.md title="Edit this Page" alt="edit this page"><img src=/icons/github-1.svg>
+Edit This Page</a>
+<script data-isso=https://board.chronoligne.com/luisblog/ data-title="K3s - Adding a private insecure registry - LowEntorpy" data-isso-css=true data-isso-lang=en_US data-isso-reply-to-self=false data-isso-reply-notifications=false data-isso-require-author=true data-isso-require-email=true data-isso-vote=true src=https://board.chronoligne.com/luisblog/js/embed.min.js></script><section id=isso-thread></section><span class=copyright>&copy; 2020
+<a href=https://github.com/llimon title="Luis E Limon" alt=Luis-github target=_blank>Luis E. Limon</a></span></footer></body></html>
