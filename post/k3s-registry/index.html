@@ -179,8 +179,7 @@ pod/test-registry-proxy created
 </code></pre></div><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground get pods
 NAME                  READY   STATUS    RESTARTS   AGE
 test-registry-proxy   1/1     Running   <span style=color:#2aa198>0</span>          7s
-</code></pre></div><p><strong>Note</strong> Status running is a good sign, Kubernetes was hable to pull the image and run the container.
-11. Confirm is running by tailing the console</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash> $ kubectl -n playground logs -f test-registry-proxy
+</code></pre></div><p><strong>Note</strong> Status running is a good sign, Kubernetes was hable to pull the image and run the container.</p><ol start=11><li>Confirm is running by tailing the console</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash> $ kubectl -n playground logs -f test-registry-proxy
 Hello World
 Hello World
 Hello World
