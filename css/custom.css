@@ -300,3 +300,16 @@ nav ul li>a:only-child::after {
 footer {
   text-align: center;
 }
+
+.headpost {
+  padding: 0 25px;
+  max-width: 960px;
+}
+
+.headpost img {
+  float: left;
+}
+
+.headpost h1 {
+  position: relative;
+}

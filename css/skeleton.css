@@ -46,12 +46,22 @@
   .container {
     width: 85%;
     padding: 0; }
+  .headpost {
+    margin-left: 12%;
+    margin-right: 12%;
+    width: 85%;
+    padding: 0; }
 }
 
 /* For devices larger than 550px */
 @media (min-width: 550px) {
   .container {
     width: 80%; }
+  .headpost {
+    margin-left: 10%;
+    margin-right: 10%;
+    width: 80%; }
+  .column,
   .column,
   .columns {
     margin-left: 4%; }
