@@ -1,0 +1,132 @@
+<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Kubenretes - Implement persistent resources using NFS volumes - Soo broken</title><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel=stylesheet type=text/css><link rel=stylesheet href=https://llimon.github.io/css/normalize.css><link rel=stylesheet href=https://llimon.github.io/css/skeleton.css><link rel=stylesheet href=https://llimon.github.io/css/custom.css><link rel=stylesheet href=//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css><script src=https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js></script><script src=https://code.jquery.com/ui/1.12.1/jquery-ui.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js></script><link rel="shortcut icon" href=/images/favicon.png type=image/png></head><body><nav><label for=drop class=toggle><i class="fas fa-bars u-pull-right" aria-hidden=true></i><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></label>
+<input type=checkbox id=drop><ul class=menu><li><a href=https://llimon.github.io><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/contact class=Members><span><i class="fas fa-envelope"></i>contact</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/post class=Members><span><i class="fas fa-list"></i>blog</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/about class=Members><span><i class="fas fa-home"></i>about</span></a></li></ul></nav><div class=site><h2 style=margin-left:80px>Soo broken</h2></div><div class=container><h1 class=section-heading>Kubenretes - Implement persistent resources using NFS volumes</h1><i class="far fa-calendar"></i>Published On: 2020-07-08,
+<i class="far fa-clock"></i>Reading Time: 5 minutes</h6></div><div class="section main"><div class="row content"><br><br><article><h2 id=introduction>Introduction</h2><p>Kubernetes, with all its greatness, still needs a place where to reliably store data and make that data persist across pod restarts and nodes. Here comes NFS or Network File Share, NFS has been around for many years, created by Sun Microsystems (now owned by Oracle) way back in 1984. Now in version 4 is still a viable solution with clients for most operating systems, Commonly used in Data Centers for VMware ESXi and other virtualization solutions to move storage across server fleets. Kubernetes provides native NFS support; no need to install custom controllers.</p><h3 id=nfsv3-or-nfsv4>NFSv3 or NFSv4</h3><p>One crucial difference with v3. v4 is stateful, open, writing, reading, and locking have a state that is maintained by the server.
+On the other part, NFSv3 is stateless, and the client performs operations like locking; an application can lose its lock on network interruption. Locking in NFSv4 is leased; this requires a client to keep contact with the server to preserve the lock.</p><h3 id=install-nfs-support-in-each-kubernetes-node>Install NFS support in each Kubernetes node</h3><p>Kubernetes uses native Linux NFS client to mount volumes. In Ubuntu install it with</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ apt update <span style=color:#719e07>&amp;&amp;</span> sudo apt upgrade -y
+$ sudo apt-get install nfs-kernel-server nfs-common -y
+</code></pre></div><h2 id=verify-connectivity-nfs-server>Verify connectivity NFS server.</h2><p>I learned this command long ago; in 1998! When trying to &ldquo;inspect&rdquo; an sun E10000 I was not supposed to mingling with. It&rsquo;s still usefull for inspecting NFSv3 shares.</p><p>Note: casa is the name of my NAS file server.</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ showmount -e casa
+Exports list on casa:
+/mnt/volume01/home                 192.168.1.0 192.168.10.0
+</code></pre></div><p>Is always good to verify nfs volumes access and the version. First try mounting a nfsv4 volume.</p><p>Create test mount point</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ sudo mkdir /mnt/test-nfs
+</code></pre></div><p>Attempt to mount a volume using nfsv4</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ sudo mount -t nfs4 -o <span style=color:#268bd2>vers</span><span style=color:#719e07>=</span>4.1 casa:/test /mnt/test-nfs
+
+</code></pre></div><p>If that does not work try nfsv3 <em>for nfs3 my nas requires I specify the server path (ie /mnt/volume01/k3s-storage/test)</em></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ sudo mount -v -t nfs -o <span style=color:#268bd2>vers</span><span style=color:#719e07>=</span><span style=color:#2aa198>3</span> casa:/mnt/volume01/k3s-storage/test /mnt/test-nfs
+</code></pre></div><p>Write test data to nfs volume</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>dd <span style=color:#719e07>if</span><span style=color:#719e07>=</span>/dev/random <span style=color:#268bd2>of</span><span style=color:#719e07>=</span>/mnt/test-nfs/random-data.dat <span style=color:#268bd2>bs</span><span style=color:#719e07>=</span>64k <span style=color:#268bd2>count</span><span style=color:#719e07>=</span><span style=color:#2aa198>1000</span>
+</code></pre></div><p>Test NFS type</p><p>Run nfsstat command line. It will output NFS statistics for NFSv3 and NFSv4, Notice with protocol has write and read activity. In the shown example, the mounted volume is NFsv4.</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ nfsstat 
+Client rpc stats:
+calls      retrans    authrefrsh
+<span style=color:#2aa198>195029</span>     <span style=color:#2aa198>0</span>          <span style=color:#2aa198>195030</span>
+
+Client nfs v3:
+null             getattr          setattr          lookup           access
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%
+readlink         <span style=color:#b58900>read</span>             write            create           mkdir
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%
+symlink          mknod            remove           rmdir            rename
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%
+link             readdir          readdirplus      fsstat           fsinfo
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%
+pathconf         commit
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%
+
+Client nfs v4:
+null             <span style=color:#b58900>read</span>             write            commit           open
+<span style=display:block;width:100%;background-color:#19404a><span style=color:#2aa198>34</span>        0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>95606</span>    99%     <span style=color:#2aa198>61</span>        0%     <span style=color:#2aa198>61</span>        0%
+</span>open_conf        open_noat        open_dgrd        close            setattr
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>60</span>        0%     <span style=color:#2aa198>189</span>       0%
+fsinfo           renew            setclntid        confirm          lock
+<span style=color:#2aa198>22</span>        0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>24</span>        0%     <span style=color:#2aa198>4</span>         0%     <span style=color:#2aa198>0</span>         0%
+lockt            locku            access           getattr          lookup
+<span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>0</span>         0%     <span style=color:#2aa198>18</span>        0%     <span style=color:#2aa198>24</span>        0%     <span style=color:#2aa198>138</span>       0%
+...
+</code></pre></div><h2 id=create-a-nfs-persistentvolume>Create a NFS PersistentVolume.</h2><ol><li>Creane namespace</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl create namespace playground
+namespace/playground created
+</code></pre></div><ol start=2><li>Define a volume group<br>We will be writting all volumes under base /k3s-storage. PersistentVolumes
+only allow mounting with one accessMode.</li></ol><p>the following access modes are available for NFS:<br>&ndash; <strong>ReadWriteOnce</strong> <em>the volume can be mounted as read-write by a single node</em><br>For databases and data stores where data consistency is paramount. Clasic examples
+Oracle, MySQL, Postgress.</p><p>&ndash; <strong>ReadOnlyMany</strong> <em>the volume can be mounted read-only by many nodes</em><br>Example is one database master with, read only slaves.</p><p>&ndash; <strong>ReadWriteMany</strong> <em>the volume can be mounted as read-write by many nodes</em><br>Used for object stores, dataware house &ldquo;cold storage&rdquo;, web assets and ETL.</p><h2 id=persistent-volumes-pv-and-volume-claims-pvc>Persistent Volumes (PV) and Volume Claims (PVC)</h2><p>Persitent Volumes are a piece of storage allocated by the cluster aministrator or dynamicaly privisioned. PV are clusted wide not namespaced.<br>Persistent Volume claims is a request of a allocated storage by the user. PVC are namespaced.</p><p>File: <strong>kube-nfs-pv.yaml</strong></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: PersistentVolume
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: nfs-pv<span style=color:#2aa198>-0001</span>
+  <span style=color:#719e07>labels</span>:
+    <span style=color:#719e07>type</span>: networked
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>storageClassName</span>: nfs-rwonce
+  <span style=color:#719e07>capacity</span>:
+    <span style=color:#719e07>storage</span>: 10Gi
+  <span style=color:#719e07>accessModes</span>:
+    - ReadWriteOnce
+  <span style=color:#719e07>mountOptions</span>:
+    - hard
+    - nfsvers=<span style=color:#2aa198>4.1</span>
+  <span style=color:#719e07>nfs</span>:
+    <span style=color:#719e07>server</span>: casa
+    <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/nfs-pv-0001&#34;</span>
+    <span style=color:#719e07>readOnly</span>: <span style=color:#cb4b16>false</span>
+</code></pre></div><p>Apply it (We are specifying a namespace to make nfs-rwonce storageclass visible to the PVC. Otherwise, we will need to define a Storageclass object).</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f kube-nfs-pv.yaml
+persistentvolume/nfs-pv-0001 created
+
+$ kubectl get pv
+NAME          CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                   STORAGECLASS   REASON   AGE
+nfs-pv-0001   10Gi       RWO            Retain           Bound    playground/test-claim   nfs-rwonce              0h30s
+</code></pre></div><p><em>Tip: To mount the volume using NFSv3 replace the last 8 lines with</em></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>  <span style=color:#719e07>mountOptions</span>:
+    - hard
+    - vers=<span style=color:#2aa198>3.0</span>
+    - nfsvers=<span style=color:#2aa198>3.0</span>
+  <span style=color:#719e07>nfs</span>:
+    <span style=color:#719e07>server</span>: casa
+    <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/mnt/volume01/k3s-storage/nfs-pv-0001&#34;</span>
+    <span style=color:#719e07>readOnly</span>: <span style=color:#cb4b16>false</span>
+</code></pre></div><ol start=3><li>Create a VolumeClaim (PVC)<br>File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: PersistentVolumeClaim
+<span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: test-claim
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>accessModes</span>:
+    - ReadWriteOnce
+  <span style=color:#719e07>resources</span>:
+    <span style=color:#719e07>requests</span>:
+      <span style=color:#719e07>storage</span>: 1Mi
+  <span style=color:#719e07>storageClassName</span>: nfs-rwonce
+</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f kube-nfs-pvc.yaml
+persistentvolumeclaim/test-claim created
+
+$ kubectl -n playground get pvc
+NAME         STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+test-claim   Pending
+</code></pre></div><ol start=4><li>Run pod to use your new nfs volume claim<br>File: <strong>test-pod-nfs-pvc.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: Pod
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: test-nfs-pvc
+  <span style=color:#719e07>namespace</span>: playground
+<span style=color:#719e07>spec</span>:
+  <span style=color:#719e07>containers</span>:
+  - <span style=color:#719e07>name</span>: busybox
+    <span style=color:#719e07>image</span>: busybox:latest
+    <span style=color:#719e07>command</span>: [<span style=color:#2aa198>&#34;sh&#34;</span>]
+    <span style=color:#719e07>args</span>: [<span style=color:#2aa198>&#34;-c&#34;</span>, <span style=color:#2aa198>&#34;while [ 1 ]; do echo &#39;Hello World&#39;&gt;/data/nfs-data.dat &amp;&amp; sleep 10; done&#34;</span>]
+    <span style=color:#719e07>resources</span>:
+      <span style=color:#719e07>limits</span>:
+        <span style=color:#719e07>cpu</span>: 100m
+        <span style=color:#719e07>memory</span>: 50Mi
+    <span style=color:#719e07>volumeMounts</span>:
+    - <span style=color:#719e07>name</span>: test-store
+      <span style=color:#719e07>mountPath</span>: /data
+  <span style=color:#719e07>volumes</span>:
+  - <span style=color:#719e07>name</span>: test-store
+    <span style=color:#719e07>persistentVolumeClaim</span>:
+      <span style=color:#719e07>claimName</span>: test-claim
+</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f test-pod-nfs-pvc.yaml
+pod/test-nfs-pvc created
+
+$ kubectl -n playground get pods
+NAME                  READY   STATUS    RESTARTS   AGE
+test-pod-nfs-pvc      1/1     Running   <span style=color:#2aa198>0</span>          17s
+
+$ kubectl -n playground logs -f pod/test-nfs-pvc
+total <span style=color:#2aa198>14</span>
+drwxr-xr-x    <span style=color:#2aa198>2</span> nobody   <span style=color:#2aa198>42949672</span>         <span style=color:#2aa198>3</span> Jul  <span style=color:#2aa198>9</span> 00:22 .
+drwxr-xr-x    <span style=color:#2aa198>1</span> root     root          <span style=color:#2aa198>4096</span> Jul  <span style=color:#2aa198>9</span> 00:30 ..
+-rw-r--r--    <span style=color:#2aa198>1</span> nobody   <span style=color:#2aa198>42949672</span>        <span style=color:#2aa198>12</span> Jul  <span style=color:#2aa198>9</span> 00:30 nfs-data.dat
+Hello World
+^C
+</code></pre></div><h2 id=final-thoughts>Final thoughts</h2><p>Kubernetes and NFS work very well together and provide you with reliable networked storage for most persistent workloads; you can use Cloud implementations from AWS EFS and Google Cloud Filestore.</p></article></div></div><footer><script data-isso=https://board.chronoligne.com/luisblog/ data-title="Kubenretes - Implement persistent resources using NFS volumes - LowEntorpy" data-isso-css=true data-isso-lang=en_US data-isso-reply-to-self=false data-isso-reply-notifications=false data-isso-require-author=true data-isso-require-email=true data-isso-vote=true src=https://board.chronoligne.com/luisblog/js/embed.min.js></script><section id=isso-thread></section><span class=copyright>&copy; 2020
+<a href=https://github.com/llimon title="Luis E Limon" alt=Luis-github target=_blank>Luis E. Limon</a></span></footer></body></html>
