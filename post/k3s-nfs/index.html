@@ -42,7 +42,8 @@ lockt            locku            access           getattr          lookup
 namespace/playground created
 </code></pre></div><ol start=2><li>Define a volume group<br>We will be writting all volumes under base /k3s-storage. PersistentVolumes
 only allow mounting with one accessMode.</li></ol><p>the following access modes are available for NFS:<br>&ndash; <strong>ReadWriteOnce</strong> <em>the volume can be mounted as read-write by a single node</em><br>For databases and data stores where data consistency is paramount. Clasic examples
-Oracle, MySQL, Postgress.</p><p>&ndash; <strong>ReadOnlyMany</strong> <em>the volume can be mounted read-only by many nodes</em><br>Example is one database master with, read only slaves.</p><p>&ndash; <strong>ReadWriteMany</strong> <em>the volume can be mounted as read-write by many nodes</em><br>Used for object stores, dataware house &ldquo;cold storage&rdquo;, web assets and ETL.</p><h2 id=persistent-volumes-pv-and-volume-claims-pvc>Persistent Volumes (PV) and Volume Claims (PVC)</h2><p>Persitent Volumes are a piece of storage allocated by the cluster aministrator or dynamicaly privisioned. PV are clusted wide not namespaced.<br>Persistent Volume claims is a request made by the user of previously allocated storage. PVCs are namespaced.</p><p>File: <strong>kube-nfs-pv.yaml</strong></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+Oracle, MySQL, Postgress.</p><p>&ndash; <strong>ReadOnlyMany</strong> <em>the volume can be mounted read-only by many nodes</em><br>Example is one database master with, read only slaves.</p><p>&ndash; <strong>ReadWriteMany</strong> <em>the volume can be mounted as read-write by many nodes</em><br>Used for object stores, dataware house &ldquo;cold storage&rdquo;, web assets and ETL.</p><h2 id=persistent-volumes-pv-and-volume-claims-pvc>Persistent Volumes (PV) and Volume Claims (PVC)</h2><p>Persitent Volumes are a piece of storage allocated by the cluster aministrator or dynamicaly privisioned. PV are clusted wide not namespaced.<br>Persistent Volume claims is a request made by the user of previously allocated storage. PVCs are namespaced.</p><ol start=3><li>Create a Persistent Volume
+File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
 <span style=color:#719e07>kind</span>: PersistentVolume
 <span style=color:#719e07>metadata</span>:
   <span style=color:#719e07>name</span>: nfs-pv<span style=color:#2aa198>-0001</span>
@@ -75,7 +76,7 @@ nfs-pv-0001   10Gi       RWO            Retain           Bound    playground/tes
     <span style=color:#719e07>server</span>: casa
     <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/mnt/volume01/k3s-storage/nfs-pv-0001&#34;</span>
     <span style=color:#719e07>readOnly</span>: <span style=color:#cb4b16>false</span>
-</code></pre></div><ol start=3><li>Create a VolumeClaim (PVC)<br>File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: PersistentVolumeClaim
+</code></pre></div><ol start=4><li>Create a VolumeClaim (PVC)<br>File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: PersistentVolumeClaim
 <span style=color:#719e07>apiVersion</span>: v1
 <span style=color:#719e07>metadata</span>:
   <span style=color:#719e07>name</span>: test-claim
@@ -92,7 +93,7 @@ persistentvolumeclaim/test-claim created
 $ kubectl -n playground get pvc
 NAME         STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 test-claim   Pending
-</code></pre></div><ol start=4><li>Run pod to use your new nfs volume claim<br>File: <strong>test-pod-nfs-pvc.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+</code></pre></div><ol start=5><li>Run pod to use your new nfs volume claim<br>File: <strong>test-pod-nfs-pvc.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
 <span style=color:#719e07>kind</span>: Pod
 <span style=color:#719e07>metadata</span>:
   <span style=color:#719e07>name</span>: test-nfs-pvc
