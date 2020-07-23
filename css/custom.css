@@ -1,7 +1,11 @@
 a {
+  color: blue;
+  text-decoration: none;
+}
+
+.titlelist {
   color: #111;
   text-decoration: none;
-  font-weight: 500;
 }
 
 a:hover {

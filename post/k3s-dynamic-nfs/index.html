@@ -1,72 +1,159 @@
-<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Kubernetes - Dynamic persistent NFS volumes - Soo broken</title><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><meta property="og:title" content="Kubernetes - Dynamic persistent NFS volumes"><meta property="og:image" content="https://llimon.github.io/images/kubernetes-nfs.png"><link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel=stylesheet type=text/css><link rel=stylesheet href=https://llimon.github.io/css/normalize.css><link rel=stylesheet href=https://llimon.github.io/css/skeleton.css><link rel=stylesheet href=https://llimon.github.io/css/custom.css><link rel=stylesheet href=//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css><script src=https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js></script><script src=https://code.jquery.com/ui/1.12.1/jquery-ui.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js></script><link rel="shortcut icon" href=/images/favicon.png type=image/png><script type=application/javascript>var doNotTrack=false;if(!doNotTrack){(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');ga('create','UA-172334549-1','auto');ga('send','pageview');}</script></head><body><nav><label for=drop class=toggle><i class="fas fa-bars u-pull-right" aria-hidden=true></i><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></label>
-<input type=checkbox id=drop><ul class=menu><li><a href=https://llimon.github.io><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/contact class=Members><span><i class="fas fa-envelope"></i>contact</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/post class=Members><span><i class="fas fa-list"></i>blog</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/about class=Members><span><i class="fas fa-home"></i>about</span></a></li></ul></nav><div class=site><h2 style=margin-left:80px>Soo broken</h2></div><div class=container><img src=/images/kubernetes-nfs.png height=250px></img><h1>Kubernetes - Dynamic persistent NFS volumes</h1><i class="far fa-calendar"></i>Published On: 2020-07-08,
-<i class="far fa-clock"></i>Reading Time: 3 minutes</h6></div><div class="section main"><div class="row content"><br><br><article><h2 id=introduction>Introduction</h2><p>We previously configured kubernetes to leverage NFS volumes to crease kubernetes storage that moves across pods and nodes.
-the downside of this configuration is that only Kubernetes administratos can create volumes, its good if your org wants to control the inventary of NFS usage; not soo good if your organization wants to be more agile and reduce bottle necks.</p><p>For this using kubernetes allows Administrators to configure dynamic volume allocation. Once configured, developers will be able to allocate &ldquo;volumes&rdquo; (folders in a predetermined NFS share).</p><p>&mldr;</p><h2 id=create-a-nfs-persistentvolume>Create a NFS PersistentVolume.</h2><ol><li>Creane namespace</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl create namespace playground
-namespace/playground created
-</code></pre></div><ol start=2><li>Define a volume group<br>We will be writting all volumes under base /k3s-storage. PersistentVolumes
-only allow mounting with one accessMode.</li></ol><p>the following access modes are available for NFS:<br>&ndash; <strong>ReadWriteOnce</strong> <em>the volume can be mounted as read-write by a single node</em><br>For databases and data stores where data consistency is paramount. Clasic examples
-Oracle, MySQL, Postgress.</p><p>&ndash; <strong>ReadOnlyMany</strong> <em>the volume can be mounted read-only by many nodes</em><br>Example is one database master with, read only slaves.</p><p>&ndash; <strong>ReadWriteMany</strong> <em>the volume can be mounted as read-write by many nodes</em><br>Used for object stores, dataware house &ldquo;cold storage&rdquo;, web assets and ETL.</p><h2 id=persistent-volumes-pv-and-volume-claims-pvc>Persistent Volumes (PV) and Volume Claims (PVC)</h2><p>Persitent Volumes are a piece of storage allocated by the cluster aministrator or dynamicaly privisioned. PV are clusted wide not namespaced.<br>Persistent Volume claims is a request made by the user of previously allocated storage. PVCs are namespaced.</p><ol start=3><li>Create a Persistent Volume
-File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
-<span style=color:#719e07>kind</span>: PersistentVolume
+<!doctype html><html lang=en-us><head><meta charset=utf-8><title>Kubernetes - Dynamic NFS provisioning - Soo broken</title><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><meta property="og:title" content="Kubernetes - Dynamic NFS provisioning"><meta property="og:image" content="https://llimon.github.io/images/kubernetes-dynamic-nfs.png"><link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel=stylesheet type=text/css><link rel=stylesheet href=https://llimon.github.io/css/normalize.css><link rel=stylesheet href=https://llimon.github.io/css/skeleton.css><link rel=stylesheet href=https://llimon.github.io/css/custom.css><link rel=stylesheet href=//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css><script src=https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js></script><script src=https://code.jquery.com/ui/1.12.1/jquery-ui.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js></script><link rel="shortcut icon" href=/images/favicon.png type=image/png><script type=application/javascript>var doNotTrack=false;if(!doNotTrack){(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');ga('create','UA-172334549-1','auto');ga('send','pageview');}</script></head><body><nav><label for=drop class=toggle><i class="fas fa-bars u-pull-right" aria-hidden=true></i><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></label>
+<input type=checkbox id=drop><ul class=menu><li><a href=https://llimon.github.io><span><i class="fas fa-fire" aria-hidden=true></i>llimon.github.io</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/contact class=Members><span><i class="fas fa-envelope"></i>contact</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/post class=Members><span><i class="fas fa-list"></i>blog</span></a></li><li class=u-pull-right><a href=https://llimon.github.io/about class=Members><span><i class="fas fa-home"></i>about</span></a></li></ul></nav><div class=site><h2 style=margin-left:80px>Soo broken</h2></div><div class=container><img src=/images/kubernetes-dynamic-nfs.png height=250px></img><h1>Kubernetes - Dynamic NFS provisioning</h1><i class="far fa-calendar"></i>Published On: 2020-07-23,
+<i class="far fa-clock"></i>Reading Time: 5 minutes</h6></div><div class="section main"><div class="row content"><br><br><article><h2 id=introduction>Introduction</h2><p>We previously configured <a href=/post/k3s-NFS>NFS volumes</a> in Kubernetes for reliable free fault-tolerant networked storage.</p><p>The downside of manually defining volumes is that only Kubernetes administrators can create volumes; this might be desired in some cases to implement strict control of NFS usage.</p><p>For organizations using <em>agile</em> and <em>self-service</em> where application owners do NFS provisioning in a decentralized way, Kubernetes allows dynamic volume provisioning. In this model, PersistanceVolumeClaims will trigger volume creation.</p><h2 id=before-we-start>Before we start.</h2><p>Make sure you have a working NFS server and connectivity is sorted out, Refer to <a href=/post/k3s-nfs><strong>Using NFS in Kubernetes</strong></a> for help.
+and the destination path in your NAS exists (in my case casa:/nfs-managed)</p><h2 id=install-nfs-dynmaic-provisioner>Install NFS Dynmaic provisioner</h2><p>Once a resource provisioner for <em>storageClass</em> is defined, VolumeClaims (PVCs) with matching the class will dynamically create volumes the class provisioner.
+We will use <a href=https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client>NFS-Client Provisioner</a> in our Kubernetes cluster. If you are interested <a href=https://github.com/kubernetes-incubator/external-storage/blob/master/nfs-client/cmd/nfs-client-provisioner/provisioner.go>here is the source code</a></p><ol><li>Create a Service Account
+NFS provisioner needs a service account to manage NFS volumes. Note: <em>namespace: kube-custom</em> is where we will be running nfs-provisioner resources. (Kubernetes RBAC is outside out of scope from this blog). This RBAC role gives serviceAccount <em>nfs-client-provisioner</em> ability to manage volumes.</li></ol><p>File:<strong>rbac-nfs-client-provisioner.yaml</strong></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+<span style=color:#719e07>kind</span>: ServiceAccount
 <span style=color:#719e07>metadata</span>:
-  <span style=color:#719e07>name</span>: nfs-pv<span style=color:#2aa198>-0001</span>
-  <span style=color:#719e07>labels</span>:
-    <span style=color:#719e07>type</span>: networked
+  <span style=color:#719e07>name</span>: nfs-client-provisioner
+  <span style=color:#586e75># replace with namespace where provisioner is deployed</span>
+  <span style=color:#719e07>namespace</span>: kube-custom
+---
+<span style=color:#719e07>kind</span>: ClusterRole
+<span style=color:#719e07>apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: nfs-client-provisioner-runner
+<span style=color:#719e07>rules</span>:
+  - <span style=color:#719e07>apiGroups</span>: [<span style=color:#2aa198>&#34;&#34;</span>]
+    <span style=color:#719e07>resources</span>: [<span style=color:#2aa198>&#34;persistentvolumes&#34;</span>]
+    <span style=color:#719e07>verbs</span>: [<span style=color:#2aa198>&#34;get&#34;</span>, <span style=color:#2aa198>&#34;list&#34;</span>, <span style=color:#2aa198>&#34;watch&#34;</span>, <span style=color:#2aa198>&#34;create&#34;</span>, <span style=color:#2aa198>&#34;delete&#34;</span>]
+  - <span style=color:#719e07>apiGroups</span>: [<span style=color:#2aa198>&#34;&#34;</span>]
+    <span style=color:#719e07>resources</span>: [<span style=color:#2aa198>&#34;persistentvolumeclaims&#34;</span>]
+    <span style=color:#719e07>verbs</span>: [<span style=color:#2aa198>&#34;get&#34;</span>, <span style=color:#2aa198>&#34;list&#34;</span>, <span style=color:#2aa198>&#34;watch&#34;</span>, <span style=color:#2aa198>&#34;update&#34;</span>]
+  - <span style=color:#719e07>apiGroups</span>: [<span style=color:#2aa198>&#34;storage.k8s.io&#34;</span>]
+    <span style=color:#719e07>resources</span>: [<span style=color:#2aa198>&#34;storageclasses&#34;</span>]
+    <span style=color:#719e07>verbs</span>: [<span style=color:#2aa198>&#34;get&#34;</span>, <span style=color:#2aa198>&#34;list&#34;</span>, <span style=color:#2aa198>&#34;watch&#34;</span>]
+  - <span style=color:#719e07>apiGroups</span>: [<span style=color:#2aa198>&#34;&#34;</span>]
+    <span style=color:#719e07>resources</span>: [<span style=color:#2aa198>&#34;events&#34;</span>]
+    <span style=color:#719e07>verbs</span>: [<span style=color:#2aa198>&#34;create&#34;</span>, <span style=color:#2aa198>&#34;update&#34;</span>, <span style=color:#2aa198>&#34;patch&#34;</span>]
+---
+<span style=color:#719e07>kind</span>: ClusterRoleBinding
+<span style=color:#719e07>apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: run-nfs-client-provisioner
+<span style=color:#719e07>subjects</span>:
+  - <span style=color:#719e07>kind</span>: ServiceAccount
+    <span style=color:#719e07>name</span>: nfs-client-provisioner
+    <span style=color:#586e75># replace with namespace where provisioner is deployed</span>
+    <span style=color:#719e07>namespace</span>: kube-custom
+<span style=color:#719e07>roleRef</span>:
+  <span style=color:#719e07>kind</span>: ClusterRole
+  <span style=color:#719e07>name</span>: nfs-client-provisioner-runner
+  <span style=color:#719e07>apiGroup</span>: rbac.authorization.k8s.io
+---
+<span style=color:#719e07>kind</span>: Role
+<span style=color:#719e07>apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: leader-locking-nfs-client-provisioner
+  <span style=color:#586e75># replace with namespace where provisioner is deployed</span>
+  <span style=color:#719e07>namespace</span>: kube-custom
+<span style=color:#719e07>rules</span>:
+  - <span style=color:#719e07>apiGroups</span>: [<span style=color:#2aa198>&#34;&#34;</span>]
+    <span style=color:#719e07>resources</span>: [<span style=color:#2aa198>&#34;endpoints&#34;</span>]
+    <span style=color:#719e07>verbs</span>: [<span style=color:#2aa198>&#34;get&#34;</span>, <span style=color:#2aa198>&#34;list&#34;</span>, <span style=color:#2aa198>&#34;watch&#34;</span>, <span style=color:#2aa198>&#34;create&#34;</span>, <span style=color:#2aa198>&#34;update&#34;</span>, <span style=color:#2aa198>&#34;patch&#34;</span>]
+---
+<span style=color:#719e07>kind</span>: RoleBinding
+<span style=color:#719e07>apiVersion</span>: rbac.authorization.k8s.io/v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: leader-locking-nfs-client-provisioner
+  <span style=color:#586e75># replace with namespace where provisioner is deployed</span>
+  <span style=color:#719e07>namespace</span>: kube-custom
+<span style=color:#719e07>subjects</span>:
+  - <span style=color:#719e07>kind</span>: ServiceAccount
+    <span style=color:#719e07>name</span>: nfs-client-provisioner
+    <span style=color:#586e75># replace with namespace where provisioner is deployed</span>
+    <span style=color:#719e07>namespace</span>: kube-custom
+<span style=color:#719e07>roleRef</span>:
+  <span style=color:#719e07>kind</span>: Role
+  <span style=color:#719e07>name</span>: leader-locking-nfs-client-provisioner
+  <span style=color:#719e07>apiGroup</span>: rbac.authorization.k8s.io
+</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl apply -f rbac-nfs-client-provisioner.yaml
+serviceaccount/nfs-client-provisioner created
+clusterrole.rbac.authorization.k8s.io/nfs-client-provisioner-runner created
+clusterrolebinding.rbac.authorization.k8s.io/run-nfs-client-provisioner created
+role.rbac.authorization.k8s.io/leader-locking-nfs-client-provisioner created
+rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-client-provisioner created
+</code></pre></div><ol start=2><li>Create a namespace to hold custom global resources.</li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>kubectl create namespace kube-custom
+namespace/kube-custom created
+</code></pre></div><p>File: <strong>nfs-provisioner.yaml</strong></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: Deployment
+<span style=color:#719e07>apiVersion</span>: apps/v1
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: nfs-client-provisioner
 <span style=color:#719e07>spec</span>:
-  <span style=color:#719e07>storageClassName</span>: nfs-rwonce
-  <span style=color:#719e07>capacity</span>:
-    <span style=color:#719e07>storage</span>: 10Gi
-  <span style=color:#719e07>accessModes</span>:
-    - ReadWriteOnce
-  <span style=color:#719e07>mountOptions</span>:
-    - hard
-    - nfsvers=<span style=color:#2aa198>4.1</span>
-  <span style=color:#719e07>nfs</span>:
-    <span style=color:#719e07>server</span>: casa
-    <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/nfs-pv-0001&#34;</span>
-    <span style=color:#719e07>readOnly</span>: <span style=color:#cb4b16>false</span>
-</code></pre></div><p>Apply it (We are specifying a namespace to make nfs-rwonce storageclass visible to the PVC. Otherwise, we will need to define a Storageclass object).</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f kube-nfs-pv.yaml
-persistentvolume/nfs-pv-0001 created
+  <span style=color:#719e07>replicas</span>: <span style=color:#2aa198>1</span>
+  <span style=color:#719e07>selector</span>:
+    <span style=color:#719e07>matchLabels</span>:
+      <span style=color:#719e07>app</span>: nfs-client-provisioner
+  <span style=color:#719e07>strategy</span>:
+    <span style=color:#719e07>type</span>: Recreate
+  <span style=color:#719e07>template</span>:
+    <span style=color:#719e07>metadata</span>:
+      <span style=color:#719e07>labels</span>:
+        <span style=color:#719e07>app</span>: nfs-client-provisioner
+    <span style=color:#719e07>spec</span>:
+      <span style=color:#719e07>serviceAccountName</span>: nfs-client-provisioner
+      <span style=color:#719e07>containers</span>:
+        - <span style=color:#719e07>name</span>: nfs-client-provisioner
+          <span style=color:#719e07>image</span>: quay.io/external_storage/nfs-client-provisioner:latest
+          <span style=color:#719e07>volumeMounts</span>:
+            - <span style=color:#719e07>name</span>: nfs-client-root
+              <span style=color:#719e07>mountPath</span>: /persistentvolumes
+          <span style=color:#719e07>env</span>:
+            - <span style=color:#719e07>name</span>: PROVISIONER_NAME
+              <span style=color:#719e07>value</span>: nfs-storage
+            - <span style=color:#719e07>name</span>: NFS_SERVER
+              <span style=color:#719e07>value</span>: casa
+            - <span style=color:#719e07>name</span>: NFS_PATH
+              <span style=color:#719e07>value</span>: <span style=color:#2aa198>&#34;/nfs-managed&#34;</span>
+      <span style=color:#719e07>volumes</span>:
+        - <span style=color:#719e07>name</span>: nfs-client-root
+          <span style=color:#719e07>nfs</span>:
+            <span style=color:#719e07>server</span>: casa
+            <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/nfs-managed&#34;</span>
 
-$ kubectl get pv
-NAME          CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                   STORAGECLASS   REASON   AGE
-nfs-pv-0001   10Gi       RWO            Retain           Bound    playground/test-claim   nfs-rwonce              0h30s
-</code></pre></div><p><em>Tip: To mount the volume using NFSv3 replace the last 8 lines with</em></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>  <span style=color:#719e07>mountOptions</span>:
-    - hard
-    - vers=<span style=color:#2aa198>3.0</span>
-    - nfsvers=<span style=color:#2aa198>3.0</span>
-  <span style=color:#719e07>nfs</span>:
-    <span style=color:#719e07>server</span>: casa
-    <span style=color:#719e07>path</span>: <span style=color:#2aa198>&#34;/mnt/volume01/k3s-storage/nfs-pv-0001&#34;</span>
-    <span style=color:#719e07>readOnly</span>: <span style=color:#cb4b16>false</span>
-</code></pre></div><ol start=4><li>Create a VolumeClaim (PVC)<br>File: <strong>kube-nfs-pv.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: PersistentVolumeClaim
+</code></pre></div><ol start=3><li>Create a StorageClass<br>StorageClasses are a way to map Claims with volumes or the way to provision them. In this case, we are using
+a provisioner named <em>nfs-storage</em><br>File: <strong>managed-nfs-storage.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: storage.k8s.io/v1
+<span style=color:#719e07>kind</span>: StorageClass
+<span style=color:#719e07>metadata</span>:
+  <span style=color:#719e07>name</span>: managed-nfs-storage
+<span style=color:#719e07>provisioner</span>: nfs-storage
+<span style=color:#719e07>parameters</span>:
+  <span style=color:#719e07>archiveOnDelete</span>: <span style=color:#2aa198>&#34;false&#34;</span>
+</code></pre></div><p><strong>Tip</strong> setting archiveOnDelete: &ldquo;true&rdquo;. Causes provisioner to archive volumens upon deletetion of the Claim (PVC).</p><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n kube-custom apply -f managed-nfs-storage.yaml
+storageclass.storage.k8s.io/managed-nfs-storage created
+
+$ kubectl get storageclass/managed-nfs-storage
+NAME                  PROVISIONER   RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+managed-nfs-storage   nfs-storage   Delete          Immediate           <span style=color:#b58900>false</span>                  38s
+</code></pre></div><h3 id=test-dynamic-volumes>Test dynamic volumes</h3><ol start=4><li>Create a VolumeClaim using <em>managed-nfs-storage</em> storageClass. It will auto-select the NFS provisioner and dynamically create the requested volume.</li></ol><p>File: <strong>test-managed-claim.yaml</strong></p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>kind</span>: PersistentVolumeClaim
 <span style=color:#719e07>apiVersion</span>: v1
 <span style=color:#719e07>metadata</span>:
-  <span style=color:#719e07>name</span>: test-claim
+  <span style=color:#719e07>name</span>: test-managed-claim
 <span style=color:#719e07>spec</span>:
   <span style=color:#719e07>accessModes</span>:
-    - ReadWriteOnce
+    - ReadWriteMany
   <span style=color:#719e07>resources</span>:
     <span style=color:#719e07>requests</span>:
       <span style=color:#719e07>storage</span>: 1Mi
-  <span style=color:#719e07>storageClassName</span>: nfs-rwonce
-</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f kube-nfs-pvc.yaml
-persistentvolumeclaim/test-claim created
+  <span style=color:#719e07>storageClassName</span>: managed-nfs-storage
+</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f test-managed-claim.yaml
+persistentvolumeclaim/test-managed-claim created
 
-$ kubectl -n playground get pvc
-NAME         STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-test-claim   Pending
-</code></pre></div><ol start=5><li>Run pod to use your new nfs volume claim<br>File: <strong>test-pod-nfs-pvc.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
+$ kubectl -n playground get pvc/test-managed-claim
+NAME                 STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS          AGE
+test-managed-claim   Pending                                      managed-nfs-storage   91s
+</code></pre></div><ol start=5><li>Run pod to use your new NFS volume claim<br>File: <strong>test-pod-nfs-managed-pvc.yaml</strong></li></ol><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#719e07>apiVersion</span>: v1
 <span style=color:#719e07>kind</span>: Pod
 <span style=color:#719e07>metadata</span>:
-  <span style=color:#719e07>name</span>: test-nfs-pvc
+  <span style=color:#719e07>name</span>: test-managed-nfs-pvc
   <span style=color:#719e07>namespace</span>: playground
 <span style=color:#719e07>spec</span>:
   <span style=color:#719e07>containers</span>:
   - <span style=color:#719e07>name</span>: busybox
     <span style=color:#719e07>image</span>: busybox:latest
     <span style=color:#719e07>command</span>: [<span style=color:#2aa198>&#34;sh&#34;</span>]
-    <span style=color:#719e07>args</span>: [<span style=color:#2aa198>&#34;-c&#34;</span>, <span style=color:#2aa198>&#34;while [ 1 ]; do echo &#39;Hello World&#39;&gt;/data/nfs-data.dat &amp;&amp; sleep 10; done&#34;</span>]
+    <span style=color:#719e07>args</span>: [<span style=color:#2aa198>&#34;-c&#34;</span>, <span style=color:#2aa198>&#34;while [ 1 ]; do echo &#39;Hello World&#39;&gt;/data/nfs-managed-data.dat &amp;&amp; sleep 10; done&#34;</span>]
     <span style=color:#719e07>resources</span>:
       <span style=color:#719e07>limits</span>:
         <span style=color:#719e07>cpu</span>: 100m
@@ -77,20 +164,28 @@ test-claim   Pending
   <span style=color:#719e07>volumes</span>:
   - <span style=color:#719e07>name</span>: test-store
     <span style=color:#719e07>persistentVolumeClaim</span>:
-      <span style=color:#719e07>claimName</span>: test-claim
-</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f test-pod-nfs-pvc.yaml
-pod/test-nfs-pvc created
+      <span style=color:#719e07>claimName</span>: test-managed-claim
+</code></pre></div><p>Apply it</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ kubectl -n playground apply -f test-pod-nfs-managed-pvc.yaml
+pod/test-managed-nfs-pvc created
 
-$ kubectl -n playground get pods
-NAME                  READY   STATUS    RESTARTS   AGE
-test-pod-nfs-pvc      1/1     Running   <span style=color:#2aa198>0</span>          17s
+$ kubectl -n playground get pods/test-managed-nfs-pvc
+NAME                   READY   STATUS    RESTARTS   AGE
+test-managed-nfs-pvc   1/1     Running   <span style=color:#2aa198>0</span>          16s
 
-$ kubectl -n playground logs -f pod/test-nfs-pvc
-total <span style=color:#2aa198>14</span>
-drwxr-xr-x    <span style=color:#2aa198>2</span> nobody   <span style=color:#2aa198>42949672</span>         <span style=color:#2aa198>3</span> Jul  <span style=color:#2aa198>9</span> 00:22 .
-drwxr-xr-x    <span style=color:#2aa198>1</span> root     root          <span style=color:#2aa198>4096</span> Jul  <span style=color:#2aa198>9</span> 00:30 ..
--rw-r--r--    <span style=color:#2aa198>1</span> nobody   <span style=color:#2aa198>42949672</span>        <span style=color:#2aa198>12</span> Jul  <span style=color:#2aa198>9</span> 00:30 nfs-data.dat
+$ kubectl -n playground <span style=color:#b58900>exec</span> test-managed-nfs-pvc -- cat /data/nfs-managed-data.dat
 Hello World
-^C
-</code></pre></div><h2 id=final-thoughts>Final thoughts</h2><p>Kubernetes and NFS work very well together and provide you with reliable networked storage for most persistent workloads; you can use Cloud implementations from AWS EFS and Google Cloud Filestore.</p></article></div></div><footer><script data-isso=https://board.chronoligne.com/luisblog/ data-title="Kubernetes - Dynamic persistent NFS volumes - LowEntorpy" data-isso-css=true data-isso-lang=en_US data-isso-reply-to-self=false data-isso-reply-notifications=false data-isso-require-author=true data-isso-require-email=true data-isso-vote=true src=https://board.chronoligne.com/luisblog/js/embed.min.js></script><section id=isso-thread></section><span class=copyright>&copy; 2020
+
+$ kubectl -n playground get pv | <span style=color:#719e07>{</span> head -1 ; grep test-managed-claim; <span style=color:#719e07>}</span>
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                           STORAGECLASS          REASON   AGE
+pvc-1b6ac5c6-dbcf-477a-a17e-1ec0c48e032d   1Mi        RWX            Delete           Bound    playground/test-managed-claim   managed-nfs-storage            31s
+</code></pre></div><h2 id=verify-on-your-nas>Verify on your NAS</h2><p>You can now verify on your NAS (Network Attached Storage) dynamic NFS provisioning is in effect.
+If you list the contents of /nfs-managed, you will see a folder for each PersistentVolumeClaim</p><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ ls -al nfs-managed/
+total <span style=color:#2aa198>70</span>
+drwxr-xr-x  <span style=color:#2aa198>3</span> luis  wheel  <span style=color:#2aa198>3</span> Jul <span style=color:#2aa198>22</span> 17:38 .
+drwxr-xr-x  <span style=color:#2aa198>5</span> luis  wheel  <span style=color:#2aa198>6</span> Jul <span style=color:#2aa198>22</span> 16:23 ..
+drwxrwxrwx  <span style=color:#2aa198>2</span> root  wheel  <span style=color:#2aa198>3</span> Jul <span style=color:#2aa198>22</span> 17:38 playground-test-managed-claim-pvc-1b6ac5c6-dbcf-477a-a17e-1ec0c48e032d
+</code></pre></div><h3 id=note-of-caution-with-efs>Note of caution with EFS</h3><p>If you are using dynamic provisioning with <a href=https://aws.amazon.com/efs/>AWS EFS</a> or other NFS providers with IO quotas. The dynamic provisioner keeps all claims as directories
+under the <strong>same share</strong>; This results in NFS volumes sharing the same IO and disk quotas and limits. I have seen this create cascading outages in all applications using EFS when the io quota is exhausted. Use one or more of the following workarounds when dealing with IO quotas:</p><ul><li>Store a large image file in the root EFS volume to warranty a minimum throughput. (EFS gives more IO as you add more storage).</li></ul><div class=highlight><pre style=color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>fallocate -l 500G <span style=color:#719e07>do</span>-not-delete-io-limiter.img
+</code></pre></div><ul><li>Use provisioned EFS storage. (Can be expensive).</li><li>Create multiple NFS provisioners and storage classes; each one using a different EFS resource:</li></ul><blockquote><p>managed-nfs-provisioned-io<br>managed-nfs-bust-io<br>managed-nfs-provisioned-prod-db.</p></blockquote><h2 id=final-thoughts>Final thoughts</h2><p>Empowering applications to dynamically create NFS volumes is what Kubernetes is all about! Removes complexity while at the same time allowing you to have centralized resource management, developers, and admins love it. It frees your applications to run across nodes and have shorter TTR (Time to recover) in a failure scenario.
+Finally, we have all the groundwork for launching a real-life persistent service. Next, we will implement MySQL using our newly configured NFS resources.</p></article></div></div><footer><script data-isso=https://board.chronoligne.com/luisblog/ data-title="Kubernetes - Dynamic NFS provisioning - LowEntorpy" data-isso-css=true data-isso-lang=en_US data-isso-reply-to-self=false data-isso-reply-notifications=false data-isso-require-author=true data-isso-require-email=true data-isso-vote=true src=https://board.chronoligne.com/luisblog/js/embed.min.js></script><section id=isso-thread></section><span class=copyright>&copy; 2020
 <a href=https://github.com/llimon title="Luis E Limon" alt=Luis-github target=_blank>Luis E. Limon</a></span></footer></body></html>
